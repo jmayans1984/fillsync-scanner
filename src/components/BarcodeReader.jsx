@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { BrowserMultiFormatReader, NotFoundException } from '@zxing/browser';
-import { DecodeHintType, BarcodeFormat } from '@zxing/library';
+import { BrowserMultiFormatReader } from '@zxing/browser';
+import { DecodeHintType, BarcodeFormat, NotFoundException } from '@zxing/library';
 
 // ZXing con solo formatos de producto (EAN/UPC/Code128) → mucho más rápido
 const HINTS = new Map([
