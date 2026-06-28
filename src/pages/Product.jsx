@@ -234,11 +234,12 @@ export default function Product() {
       {showBuyBoxModal && (
         <div className="fixed inset-0 bg-black/50 flex items-end z-50">
           <div className="w-full bg-white rounded-t-3xl p-6 pb-10">
-            <h2 className="text-lg font-black text-[#0A2540] mb-4">Edit Buy Box Price</h2>
+            <h2 className="text-lg font-black text-[#0A2540] mb-4">Enter Buy Box Price</h2>
             <div className="relative mb-6">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold text-lg">$</span>
               <input type="number" step="0.01" min="0" value={tempBuyBox}
                 onChange={e => setTempBuyBox(e.target.value)}
+                onFocus={e => { setTempBuyBox(''); e.target.select(); }}
                 autoFocus
                 className="w-full pl-8 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl text-lg font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
                 placeholder="0.00"
@@ -262,11 +263,13 @@ export default function Product() {
       {showCogsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-end z-50">
           <div className="w-full bg-white rounded-t-3xl p-6 pb-10">
-            <h2 className="text-lg font-black text-[#0A2540] mb-4">Edit COGS</h2>
+            <h2 className="text-lg font-black text-[#0A2540] mb-2">Enter COGS</h2>
+            <p className="text-[10px] text-[#B0B0B0] mb-4">Tax will auto-calculate at {settings.taxPct}%</p>
             <div className="relative mb-6">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold text-lg">$</span>
               <input type="number" step="0.01" min="0" value={tempCogs}
                 onChange={e => setTempCogs(e.target.value)}
+                onFocus={e => { setTempCogs(''); e.target.select(); }}
                 autoFocus
                 className="w-full pl-8 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl text-lg font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
                 placeholder="0.00"
@@ -277,9 +280,18 @@ export default function Product() {
                 className="flex-1 py-3 rounded-xl border-2 border-[#E0E0E0] text-[#0A2540] font-bold">
                 Cancel
               </button>
-              <button onClick={() => { setCogs(tempCogs); setShowCogsModal(false); }}
+              <button onClick={() => {
+                setCogs(tempCogs);
+                setShowCogsModal(false);
+                // Auto-calculate tax included in COGS if needed
+                if (settings.taxPct > 0) {
+                  const cogVal = parseFloat(tempCogs) || 0;
+                  const tax = cogVal * (settings.taxPct / 100);
+                  // Tax ya está calculado en el breakdown automáticamente via calc()
+                }
+              }}
                 className="flex-1 py-3 rounded-xl bg-[#0071CE] text-white font-bold">
-                Save
+                Save & Calculate
               </button>
             </div>
           </div>
