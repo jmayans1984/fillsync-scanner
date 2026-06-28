@@ -292,36 +292,35 @@ export default function Product() {
           <div className="w-full bg-white rounded-t-3xl p-6 pb-10 max-h-[80vh] overflow-y-auto">
             <h2 className="text-lg font-black text-[#0A2540] mb-4">WFS Fee by Weight</h2>
 
-            <div className="space-y-2 mb-6">
+            <div className="space-y-2 mb-4">
               {product.wfs_structure && product.wfs_structure.map((opt, i) => (
-                <button key={i} onClick={() => setWfsFee(opt.base_fee)}
-                  className={`w-full text-left p-3 rounded-xl border-2 transition-colors ${
-                    Math.abs(parseFloat(wfsFee) - opt.base_fee) < 0.01
-                      ? 'bg-[#0071CE] border-[#0071CE] text-white'
-                      : 'border-[#E0E0E0] bg-[#F9F9FB] text-[#0A2540] hover:border-[#0071CE]'
-                  }`}>
-                  <p className="font-bold text-sm">{opt.description}</p>
-                  <p className="text-xs mt-0.5 opacity-70">{fmt(opt.base_fee)}{opt.per_lb_fee ? ` + ${opt.per_lb_fee}/lb` : ''}</p>
+                <button key={i} onClick={() => { setWfsFee(String(opt.base_fee)); setShowWfsModal(false); }}
+                  className="w-full text-left p-3 rounded-xl border-2 border-[#E0E0E0] bg-[#F9F9FB] text-[#0A2540] hover:bg-[#0071CE] hover:border-[#0071CE] hover:text-white transition-colors active:bg-[#005EA8]">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-sm">{opt.description}</p>
+                    <p className="font-black text-sm">{fmt(opt.base_fee)}{opt.per_lb_fee ? ` +${opt.per_lb_fee}/lb` : ''}</p>
+                  </div>
                 </button>
               ))}
             </div>
 
-            <div className="border-t border-[#E0E0E0] pt-4 mb-4">
+            <div className="border-t border-[#E0E0E0] pt-4">
               <p className="text-xs font-bold text-[#B0B0B0] uppercase mb-2">Or enter manually:</p>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold">$</span>
-                <input type="number" step="0.01" min="0" value={tempWfsWeight}
-                  onChange={e => { setTempWfsWeight(e.target.value); setWfsFee(e.target.value); }}
-                  className="w-full pl-8 pr-4 py-2.5 border-2 border-[#E0E0E0] rounded-xl text-sm font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
-                  placeholder="0.00"
-                />
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold">$</span>
+                  <input type="number" step="0.01" min="0" value={tempWfsWeight}
+                    onChange={e => setTempWfsWeight(e.target.value)}
+                    className="w-full pl-8 pr-4 py-2.5 border-2 border-[#E0E0E0] rounded-xl text-sm font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
+                    placeholder="0.00"
+                  />
+                </div>
+                <button onClick={() => { if (tempWfsWeight) { setWfsFee(tempWfsWeight); setShowWfsModal(false); } }}
+                  className="px-5 py-2.5 rounded-xl bg-[#0071CE] text-white font-bold text-sm">
+                  OK
+                </button>
               </div>
             </div>
-
-            <button onClick={() => setShowWfsModal(false)}
-              className="w-full py-3 rounded-xl bg-[#0071CE] text-white font-bold">
-              Done
-            </button>
           </div>
         </div>
       )}
