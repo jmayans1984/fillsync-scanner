@@ -34,19 +34,17 @@ export default function BarcodeReader({ onDetected, active = true }) {
 
     const start = async () => {
       try {
-        // Seleccionar cámara trasera por label si hay múltiples
-        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-        const back = devices.find(d =>
-          /back|rear|environment/i.test(d.label)
-        ) || devices[devices.length - 1];
-        const deviceId = back?.deviceId || undefined;
+        readerRef.current = new BrowserMultiFormatReader(HINTS, 150);
 
-        readerRef.current = new BrowserMultiFormatReader(HINTS, 150); // 150ms entre scans
-
-        // Constraints: cámara trasera + alta resolución para leer bien el código
-        const constraints = deviceId
-          ? { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-          : { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+        // Forzar cámara trasera con facingMode exact — si falla, intentar ideal
+        let constraints = { facingMode: { exact: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+        try {
+          // Probar si el dispositivo acepta facingMode exact
+          await navigator.mediaDevices.getUserMedia({ video: constraints });
+        } catch {
+          // iOS Safari antiguo u otros: caer a ideal
+          constraints = { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+        }
 
         controlsRef.current = await readerRef.current.decodeFromConstraints(
           { video: constraints },
