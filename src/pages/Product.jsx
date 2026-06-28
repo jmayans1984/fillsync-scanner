@@ -25,6 +25,15 @@ export default function Product() {
   // Editable inputs
   const [buyBox, setBuyBox]   = useState('');
   const [cogs, setCogs]       = useState('');
+  const [wfsFee, setWfsFee]   = useState('');
+
+  // Modals
+  const [showBuyBoxModal, setShowBuyBoxModal] = useState(false);
+  const [showCogsModal, setShowCogsModal]     = useState(false);
+  const [showWfsModal, setShowWfsModal]       = useState(false);
+  const [tempBuyBox, setTempBuyBox]           = useState('');
+  const [tempCogs, setTempCogs]               = useState('');
+  const [tempWfsWeight, setTempWfsWeight]     = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -38,6 +47,9 @@ export default function Product() {
         setProduct(data);
         setBuyBox(data.avg_price > 0 ? String(data.avg_price) : '');
         setCogs(data.cogs != null ? String(data.cogs) : '');
+        setWfsFee(data.wfs_fee != null ? String(data.wfs_fee) : '');
+        setTempBuyBox(data.avg_price > 0 ? String(data.avg_price) : '');
+        setTempCogs(data.cogs != null ? String(data.cogs) : '');
       } catch (e) {
         if (mounted) setError(e.message);
       } finally {
@@ -52,20 +64,20 @@ export default function Product() {
     if (!product) return null;
     const price   = parseFloat(buyBox) || 0;
     const cogVal  = parseFloat(cogs) || 0;
-    const refFee  = price * (product.referral_fee_pct / 100);
-    const wfsFee  = product.wfs_fee || 0;
+    const refFee  = parseFloat(product.referral_fee) || 0;
+    const wfsVal  = parseFloat(wfsFee) || 0;
     const tax     = cogVal * (settings.taxPct / 100);
     const transfer = parseFloat(settings.transferFee) || 0;
     const packing  = parseFloat(settings.packingCost) || 0;
     const shipping = parseFloat(settings.shippingCost) || 0;
     const custom   = (settings.customCosts || []).reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
-    const totalCost = refFee + wfsFee + cogVal + tax + transfer + packing + shipping + custom;
+    const totalCost = refFee + wfsVal + cogVal + tax + transfer + packing + shipping + custom;
     const profit    = price - totalCost;
     const margin    = price > 0 ? (profit / price) * 100 : null;
     const totalInvested = cogVal + tax + transfer + packing + shipping + custom;
     const roi       = totalInvested > 0 ? (profit / totalInvested) * 100 : null;
-    return { price, refFee, wfsFee, cogVal, tax, transfer, packing, shipping, custom, totalCost, profit, margin, roi };
-  }, [product, buyBox, cogs, settings]);
+    return { price, refFee, wfsFee: wfsVal, cogVal, tax, transfer, packing, shipping, custom, totalCost, profit, margin, roi };
+  }, [product, buyBox, cogs, wfsFee, settings]);
 
   const r = calc();
 
@@ -128,28 +140,16 @@ export default function Product() {
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#E0E0E0]">
           <h3 className="text-xs font-black text-[#0A2540] uppercase tracking-widest mb-3">Price inputs</h3>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold text-[#B0B0B0] uppercase tracking-wider mb-1.5">Buy Box Price</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold text-sm">$</span>
-                <input type="number" step="0.01" min="0" value={buyBox}
-                  onChange={e => setBuyBox(e.target.value)}
-                  className="w-full pl-7 pr-3 py-2.5 border-2 border-[#E0E0E0] rounded-xl text-sm font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-[#B0B0B0] uppercase tracking-wider mb-1.5">COGS</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold text-sm">$</span>
-                <input type="number" step="0.01" min="0" value={cogs}
-                  onChange={e => setCogs(e.target.value)}
-                  className="w-full pl-7 pr-3 py-2.5 border-2 border-[#E0E0E0] rounded-xl text-sm font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
+            <button onClick={() => { setTempBuyBox(buyBox); setShowBuyBoxModal(true); }}
+              className="text-left p-3 rounded-xl bg-[#F9F9FB] border-2 border-[#E0E0E0] hover:border-[#0071CE] transition-colors">
+              <p className="text-[10px] font-bold text-[#B0B0B0] uppercase tracking-wider mb-1">Buy Box Price</p>
+              <p className="text-lg font-black text-[#0A2540]">{fmt(parseFloat(buyBox) || 0)}</p>
+            </button>
+            <button onClick={() => { setTempCogs(cogs); setShowCogsModal(true); }}
+              className="text-left p-3 rounded-xl bg-[#F9F9FB] border-2 border-[#E0E0E0] hover:border-[#0071CE] transition-colors">
+              <p className="text-[10px] font-bold text-[#B0B0B0] uppercase tracking-wider mb-1">COGS</p>
+              <p className="text-lg font-black text-[#0A2540]">{fmt(parseFloat(cogs) || 0)}</p>
+            </button>
           </div>
         </div>
 
@@ -207,20 +207,21 @@ export default function Product() {
 
         {/* Walmart fees info card */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#E0E0E0]">
-          <h3 className="text-xs font-black text-[#0A2540] uppercase tracking-widest mb-3">Walmart Fees (auto)</h3>
+          <h3 className="text-xs font-black text-[#0A2540] uppercase tracking-widest mb-3">Walmart Fees</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-[#FFF7ED] rounded-xl p-3">
               <p className="text-[10px] font-bold text-[#FB923C] uppercase tracking-wider">Referral Fee</p>
               <p className="text-lg font-black text-[#0A2540] mt-0.5">{fmt(product.referral_fee)}</p>
-              <p className="text-[10px] text-[#B0B0B0] font-mono">{product.referral_fee_pct}%</p>
+              <p className="text-[10px] text-[#B0B0B0] font-mono">({product.category})</p>
             </div>
-            <div className="bg-[#F3F0FF] rounded-xl p-3">
+            <button onClick={() => setShowWfsModal(true)}
+              className="text-left bg-[#F3F0FF] rounded-xl p-3 hover:bg-[#E8DEFD] transition-colors">
               <p className="text-[10px] font-bold text-[#8B5CF6] uppercase tracking-wider">WFS Fee</p>
-              <p className="text-lg font-black text-[#0A2540] mt-0.5">{fmt(product.wfs_fee)}</p>
-              <p className="text-[10px] text-[#B0B0B0] font-mono">{product.wfs_fee_source}</p>
-            </div>
+              <p className="text-lg font-black text-[#0A2540] mt-0.5">{fmt(parseFloat(wfsFee) || 0)}</p>
+              <p className="text-[10px] text-[#8B5CF6] font-mono">← tap to change</p>
+            </button>
           </div>
-          <p className="text-[10px] text-[#B0B0B0] mt-2 text-center">Avg sale price: {fmt(product.avg_price)}</p>
+          <p className="text-[10px] text-[#B0B0B0] mt-2 text-center">Price: {fmt(product.avg_price)}</p>
         </div>
 
         <button onClick={() => navigate('/')}
@@ -228,6 +229,102 @@ export default function Product() {
           ← Scan Another
         </button>
       </div>
+
+      {/* Modal: Buy Box Price */}
+      {showBuyBoxModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="w-full bg-white rounded-t-3xl p-6 pb-10">
+            <h2 className="text-lg font-black text-[#0A2540] mb-4">Edit Buy Box Price</h2>
+            <div className="relative mb-6">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold text-lg">$</span>
+              <input type="number" step="0.01" min="0" value={tempBuyBox}
+                onChange={e => setTempBuyBox(e.target.value)}
+                autoFocus
+                className="w-full pl-8 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl text-lg font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowBuyBoxModal(false)}
+                className="flex-1 py-3 rounded-xl border-2 border-[#E0E0E0] text-[#0A2540] font-bold">
+                Cancel
+              </button>
+              <button onClick={() => { setBuyBox(tempBuyBox); setShowBuyBoxModal(false); }}
+                className="flex-1 py-3 rounded-xl bg-[#0071CE] text-white font-bold">
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: COGS */}
+      {showCogsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="w-full bg-white rounded-t-3xl p-6 pb-10">
+            <h2 className="text-lg font-black text-[#0A2540] mb-4">Edit COGS</h2>
+            <div className="relative mb-6">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold text-lg">$</span>
+              <input type="number" step="0.01" min="0" value={tempCogs}
+                onChange={e => setTempCogs(e.target.value)}
+                autoFocus
+                className="w-full pl-8 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl text-lg font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowCogsModal(false)}
+                className="flex-1 py-3 rounded-xl border-2 border-[#E0E0E0] text-[#0A2540] font-bold">
+                Cancel
+              </button>
+              <button onClick={() => { setCogs(tempCogs); setShowCogsModal(false); }}
+                className="flex-1 py-3 rounded-xl bg-[#0071CE] text-white font-bold">
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: WFS Fee by Weight */}
+      {showWfsModal && product && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="w-full bg-white rounded-t-3xl p-6 pb-10 max-h-[80vh] overflow-y-auto">
+            <h2 className="text-lg font-black text-[#0A2540] mb-4">WFS Fee by Weight</h2>
+
+            <div className="space-y-2 mb-6">
+              {product.wfs_structure && product.wfs_structure.map((opt, i) => (
+                <button key={i} onClick={() => setWfsFee(opt.base_fee)}
+                  className={`w-full text-left p-3 rounded-xl border-2 transition-colors ${
+                    Math.abs(parseFloat(wfsFee) - opt.base_fee) < 0.01
+                      ? 'bg-[#0071CE] border-[#0071CE] text-white'
+                      : 'border-[#E0E0E0] bg-[#F9F9FB] text-[#0A2540] hover:border-[#0071CE]'
+                  }`}>
+                  <p className="font-bold text-sm">{opt.description}</p>
+                  <p className="text-xs mt-0.5 opacity-70">{fmt(opt.base_fee)}{opt.per_lb_fee ? ` + ${opt.per_lb_fee}/lb` : ''}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="border-t border-[#E0E0E0] pt-4 mb-4">
+              <p className="text-xs font-bold text-[#B0B0B0] uppercase mb-2">Or enter manually:</p>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold">$</span>
+                <input type="number" step="0.01" min="0" value={tempWfsWeight}
+                  onChange={e => { setTempWfsWeight(e.target.value); setWfsFee(e.target.value); }}
+                  className="w-full pl-8 pr-4 py-2.5 border-2 border-[#E0E0E0] rounded-xl text-sm font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <button onClick={() => setShowWfsModal(false)}
+              className="w-full py-3 rounded-xl bg-[#0071CE] text-white font-bold">
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
