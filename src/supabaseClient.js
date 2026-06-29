@@ -9,6 +9,8 @@ export const getApiHeaders = async () => {
   const { data: { session } } = await supabase.auth.getSession();
   return {
     'Content-Type': 'application/json',
+    // El backend verifica este token y deriva el user.id real.
+    'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
     'x-user-id': session?.user?.id || '',
   };
 };
