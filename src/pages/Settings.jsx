@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
-const DEFAULT = { taxPct: 0, transferFee: 0, packingCost: 0, shippingCost: 0, customCosts: [] };
+const DEFAULT = {
+  taxPct: 0, transferFee: 0, packingCost: 0, shippingCost: 0, customCosts: [],
+  minProfit: 0, minROI: 0, minMargin: 0
+};
 
 function loadSettings() {
   try { return { ...DEFAULT, ...JSON.parse(localStorage.getItem('fillsync_scanner_settings') || '{}') }; }
@@ -99,6 +102,33 @@ export default function Settings() {
             <NumField label="Transfer / Prep Fee" value={s.transferFee} onChange={v => update('transferFee', parseFloat(v) || 0)} />
             <NumField label="Packing Cost" value={s.packingCost} onChange={v => update('packingCost', parseFloat(v) || 0)} />
             <NumField label="Shipping to WFS" value={s.shippingCost} onChange={v => update('shippingCost', parseFloat(v) || 0)} />
+          </div>
+        </div>
+
+        {/* Profit Thresholds */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#E0E0E0]">
+          <h3 className="text-xs font-black text-[#0A2540] uppercase tracking-widest mb-3">Profit Thresholds ✅/❌</h3>
+          <div className="space-y-3">
+            <NumField
+              label="Minimum Net Profit"
+              hint="Shows ✅ if profit ≥ this amount"
+              value={s.minProfit}
+              onChange={v => update('minProfit', parseFloat(v) || 0)}
+            />
+            <NumField
+              label="Minimum ROI %"
+              hint="Shows ✅ if ROI ≥ this %"
+              value={s.minROI}
+              onChange={v => update('minROI', parseFloat(v) || 0)}
+              suffix="%"
+            />
+            <NumField
+              label="Minimum Margin %"
+              hint="Shows ✅ if margin ≥ this %"
+              value={s.minMargin}
+              onChange={v => update('minMargin', parseFloat(v) || 0)}
+              suffix="%"
+            />
           </div>
         </div>
 

@@ -10,6 +10,7 @@ function useSettings() {
   const raw = localStorage.getItem('fillsync_scanner_settings');
   return raw ? JSON.parse(raw) : {
     taxPct: 0, transferFee: 0, packingCost: 0, shippingCost: 0, customCosts: [],
+    minProfit: 0, minROI: 0, minMargin: 0,
   };
 }
 
@@ -26,14 +27,17 @@ export default function Product() {
   const [buyBox, setBuyBox]   = useState('');
   const [cogs, setCogs]       = useState('');
   const [wfsFee, setWfsFee]   = useState('');
+  const [refFee, setRefFee]   = useState('');
 
   // Modals
   const [showBuyBoxModal, setShowBuyBoxModal] = useState(false);
   const [showCogsModal, setShowCogsModal]     = useState(false);
   const [showWfsModal, setShowWfsModal]       = useState(false);
+  const [showRefFeeModal, setShowRefFeeModal] = useState(false);
   const [tempBuyBox, setTempBuyBox]           = useState('');
   const [tempCogs, setTempCogs]               = useState('');
   const [tempWfsWeight, setTempWfsWeight]     = useState('');
+  const [tempRefFee, setTempRefFee]           = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -48,6 +52,7 @@ export default function Product() {
         setBuyBox(data.avg_price > 0 ? String(data.avg_price) : '');
         setCogs(data.cogs != null ? String(data.cogs) : '');
         setWfsFee(data.wfs_fee != null ? String(data.wfs_fee) : '');
+        setRefFee(data.referral_fee != null ? String(data.referral_fee) : '');
         setTempBuyBox(data.avg_price > 0 ? String(data.avg_price) : '');
         setTempCogs(data.cogs != null ? String(data.cogs) : '');
       } catch (e) {
@@ -64,20 +69,25 @@ export default function Product() {
     if (!product) return null;
     const price   = parseFloat(buyBox) || 0;
     const cogVal  = parseFloat(cogs) || 0;
-    const refFee  = parseFloat(product.referral_fee) || 0;
+    const refFeeVal = parseFloat(refFee) || 0;
     const wfsVal  = parseFloat(wfsFee) || 0;
     const tax     = cogVal * (settings.taxPct / 100);
     const transfer = parseFloat(settings.transferFee) || 0;
     const packing  = parseFloat(settings.packingCost) || 0;
     const shipping = parseFloat(settings.shippingCost) || 0;
     const custom   = (settings.customCosts || []).reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
-    const totalCost = refFee + wfsVal + cogVal + tax + transfer + packing + shipping + custom;
+    const totalCost = refFeeVal + wfsVal + cogVal + tax + transfer + packing + shipping + custom;
     const profit    = price - totalCost;
     const margin    = price > 0 ? (profit / price) * 100 : null;
     const totalInvested = cogVal + tax + transfer + packing + shipping + custom;
     const roi       = totalInvested > 0 ? (profit / totalInvested) * 100 : null;
-    return { price, refFee, wfsFee: wfsVal, cogVal, tax, transfer, packing, shipping, custom, totalCost, profit, margin, roi };
-  }, [product, buyBox, cogs, wfsFee, settings]);
+    return {
+      price, refFee: refFeeVal, wfsFee: wfsVal, cogVal, tax, transfer, packing, shipping, custom, totalCost, profit, margin, roi,
+      profitOK: profit >= settings.minProfit,
+      roiOK: roi != null && roi >= settings.minROI,
+      marginOK: margin != null && margin >= settings.minMargin,
+    };
+  }, [product, buyBox, cogs, wfsFee, refFee, settings]);
 
   const r = calc();
 
@@ -153,21 +163,24 @@ export default function Product() {
           </div>
         </div>
 
-        {/* Result summary */}
+        {/* Result summary with thresholds */}
         {r && r.price > 0 && (
           <div className={`rounded-2xl p-5 shadow-sm ${r.profit >= 0 ? 'bg-[#0A2540]' : 'bg-red-900'}`}>
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="text-center">
                 <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">Net Profit</p>
                 <p className={`text-xl font-black ${r.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{fmt(r.profit)}</p>
+                <p className="text-lg mt-1">{r.profitOK ? '✅' : '❌'}</p>
               </div>
               <div className="text-center border-x border-white/10">
                 <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">Margin</p>
                 <p className={`text-xl font-black ${r.margin >= 0 ? 'text-[#FFC220]' : 'text-red-400'}`}>{pct(r.margin)}</p>
+                <p className="text-lg mt-1">{r.marginOK ? '✅' : '❌'}</p>
               </div>
               <div className="text-center">
                 <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">ROI</p>
                 <p className={`text-xl font-black ${(r.roi ?? 0) >= 0 ? 'text-[#64B5F6]' : 'text-red-400'}`}>{pct(r.roi)}</p>
+                <p className="text-lg mt-1">{r.roiOK ? '✅' : '❌'}</p>
               </div>
             </div>
           </div>
@@ -209,11 +222,12 @@ export default function Product() {
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#E0E0E0]">
           <h3 className="text-xs font-black text-[#0A2540] uppercase tracking-widest mb-3">Walmart Fees</h3>
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#FFF7ED] rounded-xl p-3">
+            <button onClick={() => { setTempRefFee(refFee); setShowRefFeeModal(true); }}
+              className="text-left bg-[#FFF7ED] rounded-xl p-3 hover:bg-[#FFE4CC] transition-colors">
               <p className="text-[10px] font-bold text-[#FB923C] uppercase tracking-wider">Referral Fee</p>
-              <p className="text-lg font-black text-[#0A2540] mt-0.5">{fmt(product.referral_fee)}</p>
-              <p className="text-[10px] text-[#B0B0B0] font-mono">({product.category})</p>
-            </div>
+              <p className="text-lg font-black text-[#0A2540] mt-0.5">{fmt(parseFloat(refFee) || 0)}</p>
+              <p className="text-[10px] text-[#FB923C] font-mono">← tap to change</p>
+            </button>
             <button onClick={() => setShowWfsModal(true)}
               className="text-left bg-[#F3F0FF] rounded-xl p-3 hover:bg-[#E8DEFD] transition-colors">
               <p className="text-[10px] font-bold text-[#8B5CF6] uppercase tracking-wider">WFS Fee</p>
@@ -221,7 +235,7 @@ export default function Product() {
               <p className="text-[10px] text-[#8B5CF6] font-mono">← tap to change</p>
             </button>
           </div>
-          <p className="text-[10px] text-[#B0B0B0] mt-2 text-center">Price: {fmt(product.avg_price)}</p>
+          <p className="text-[10px] text-[#B0B0B0] mt-2 text-center">Category: {product.category}</p>
         </div>
 
         <button onClick={() => navigate('/')}
@@ -292,6 +306,36 @@ export default function Product() {
               }}
                 className="flex-1 py-3 rounded-xl bg-[#0071CE] text-white font-bold">
                 Save & Calculate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Referral Fee */}
+      {showRefFeeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="w-full bg-white rounded-t-3xl p-6 pb-10">
+            <h2 className="text-lg font-black text-[#0A2540] mb-2">Edit Referral Fee</h2>
+            <p className="text-[10px] text-[#B0B0B0] mb-4">Category: {product?.category}</p>
+            <div className="relative mb-6">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold text-lg">$</span>
+              <input type="number" step="0.01" min="0" value={tempRefFee}
+                onChange={e => setTempRefFee(e.target.value)}
+                onFocus={e => { setTempRefFee(''); e.target.select(); }}
+                autoFocus
+                className="w-full pl-8 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl text-lg font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowRefFeeModal(false)}
+                className="flex-1 py-3 rounded-xl border-2 border-[#E0E0E0] text-[#0A2540] font-bold">
+                Cancel
+              </button>
+              <button onClick={() => { setRefFee(tempRefFee); setShowRefFeeModal(false); }}
+                className="flex-1 py-3 rounded-xl bg-[#0071CE] text-white font-bold">
+                Save
               </button>
             </div>
           </div>
