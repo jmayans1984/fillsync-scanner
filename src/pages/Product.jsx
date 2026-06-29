@@ -57,7 +57,7 @@ export default function Product() {
             avg_price: 0,
             referral_fee: null,
             wfs_fee: 0,
-            wfs_structure: [],
+            wfs_structure: data.wfs_structure || [],
             units_sold: null,
             stock_available: null,
             stock_onhand: null,
