@@ -23,8 +23,16 @@ export default function BarcodeReader({ onDetected, active = true }) {
   const [error, setError] = useState(null);
 
   const stopScanner = useCallback(() => {
-    try { controlsRef.current?.stop(); } catch {}
+    try {
+      controlsRef.current?.stop();
+      // Liberar todas las pistas de vídeo explícitamente
+      if (videoRef.current?.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
+    } catch {}
     controlsRef.current = null;
+    readerRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -36,15 +44,8 @@ export default function BarcodeReader({ onDetected, active = true }) {
       try {
         readerRef.current = new BrowserMultiFormatReader(HINTS, 150);
 
-        // Forzar cámara trasera con facingMode exact — si falla, intentar ideal
-        let constraints = { facingMode: { exact: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } };
-        try {
-          // Probar si el dispositivo acepta facingMode exact
-          await navigator.mediaDevices.getUserMedia({ video: constraints });
-        } catch {
-          // iOS Safari antiguo u otros: caer a ideal
-          constraints = { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } };
-        }
+        // Cámara trasera con facingMode exact como prioridad
+        const constraints = { facingMode: { exact: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } };
 
         controlsRef.current = await readerRef.current.decodeFromConstraints(
           { video: constraints },
@@ -55,15 +56,12 @@ export default function BarcodeReader({ onDetected, active = true }) {
               const code = result.getText();
               if (code && code !== lastCode.current) {
                 lastCode.current = code;
-                // Vibrar si está disponible (Android)
                 if (navigator.vibrate) navigator.vibrate(80);
                 onDetected(code);
-                // Reset debounce después de 2s para permitir re-scan
                 setTimeout(() => { lastCode.current = null; }, 2000);
               }
             }
             if (err && !(err instanceof NotFoundException)) {
-              // Errores reales (no solo "no barcode found en este frame")
               if (err.name !== 'NotFoundException') console.warn('[scanner]', err.message);
             }
           }
