@@ -187,7 +187,10 @@ export default function Product() {
                 {product.stock_available != null ? product.stock_available : '—'}
               </p>
               <p className="text-[9px] text-[#B0B0B0] mt-0.5">
-                {product.stock_onhand != null ? `${product.stock_onhand} on hand` : 'available to sell'}
+                {product.stock_onhand != null ? `${product.stock_onhand} on hand` : ''}
+                {product.stock_onhand != null && product.stock_inbound != null ? ' · ' : ''}
+                {product.stock_inbound != null ? `${product.stock_inbound} inbound` : ''}
+                {product.stock_onhand == null && product.stock_inbound == null ? 'available to sell' : ''}
               </p>
             </div>
           </div>
@@ -399,7 +402,13 @@ export default function Product() {
       {showWfsModal && product && (
         <div className="fixed inset-0 bg-black/50 flex items-end z-50">
           <div className="w-full bg-white rounded-t-3xl p-6 pb-10 max-h-[80vh] overflow-y-auto">
-            <h2 className="text-lg font-black text-[#0A2540] mb-4">WFS Fee by Weight</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-black text-[#0A2540]">WFS Fee by Weight</h2>
+              <button onClick={() => setShowWfsModal(false)}
+                className="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center font-black text-base leading-none hover:bg-red-600 transition-colors">
+                ×
+              </button>
+            </div>
 
             <div className="space-y-2 mb-4">
               {product.wfs_structure && product.wfs_structure.map((opt, i) => (
