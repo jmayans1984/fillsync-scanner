@@ -312,31 +312,48 @@ export default function Product() {
         </div>
       )}
 
-      {/* Modal: Referral Fee */}
-      {showRefFeeModal && (
+      {/* Modal: Referral Fee by Category */}
+      {showRefFeeModal && product && (
         <div className="fixed inset-0 bg-black/50 flex items-end z-50">
-          <div className="w-full bg-white rounded-t-3xl p-6 pb-10">
-            <h2 className="text-lg font-black text-[#0A2540] mb-2">Edit Referral Fee</h2>
-            <p className="text-[10px] text-[#B0B0B0] mb-4">Category: {product?.category}</p>
-            <div className="relative mb-6">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold text-lg">$</span>
-              <input type="number" step="0.01" min="0" value={tempRefFee}
-                onChange={e => setTempRefFee(e.target.value)}
-                onFocus={e => { setTempRefFee(''); e.target.select(); }}
-                autoFocus
-                className="w-full pl-8 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl text-lg font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
-                placeholder="0.00"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setShowRefFeeModal(false)}
-                className="flex-1 py-3 rounded-xl border-2 border-[#E0E0E0] text-[#0A2540] font-bold">
-                Cancel
-              </button>
-              <button onClick={() => { setRefFee(tempRefFee); setShowRefFeeModal(false); }}
-                className="flex-1 py-3 rounded-xl bg-[#0071CE] text-white font-bold">
-                Save
-              </button>
+          <div className="w-full bg-white rounded-t-3xl p-6 pb-10 max-h-[80vh] overflow-y-auto">
+            <h2 className="text-lg font-black text-[#0A2540] mb-2">Referral Fee Options</h2>
+            <p className="text-[10px] text-[#B0B0B0] mb-4">Category: {product.category} | Price: {fmt(product.avg_price)}</p>
+
+            {product.referral_fee_options && product.referral_fee_options.length > 0 ? (
+              <div className="space-y-2 mb-4">
+                {product.referral_fee_options.map((opt, i) => (
+                  <button key={i} onClick={() => { setRefFee(opt.calculated_fee); setShowRefFeeModal(false); }}
+                    className="w-full text-left p-3 rounded-xl border-2 border-[#E0E0E0] bg-[#F9F9FB] text-[#0A2540] hover:bg-[#0071CE] hover:border-[#0071CE] hover:text-white transition-colors active:bg-[#005EA8]">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-sm">{opt.description || `${opt.price_min ?? '0'} - ${opt.price_max ?? '∞'}`}</p>
+                        <p className="text-xs opacity-70 mt-0.5">{opt.fee_pct}% of price</p>
+                      </div>
+                      <p className="font-black text-sm">{fmt(parseFloat(opt.calculated_fee))}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[#B0B0B0] text-center py-4">No fee options available for this category</p>
+            )}
+
+            <div className="border-t border-[#E0E0E0] pt-4">
+              <p className="text-xs font-bold text-[#B0B0B0] uppercase mb-2">Or enter manually:</p>
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold">$</span>
+                  <input type="number" step="0.01" min="0" value={tempRefFee}
+                    onChange={e => setTempRefFee(e.target.value)}
+                    className="w-full pl-8 pr-4 py-2.5 border-2 border-[#E0E0E0] rounded-xl text-sm font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
+                    placeholder="0.00"
+                  />
+                </div>
+                <button onClick={() => { if (tempRefFee) { setRefFee(tempRefFee); setShowRefFeeModal(false); } }}
+                  className="px-5 py-2.5 rounded-xl bg-[#0071CE] text-white font-bold text-sm">
+                  OK
+                </button>
+              </div>
             </div>
           </div>
         </div>
