@@ -47,7 +47,28 @@ export default function Product() {
         const res = await fetch(`${API}/api/lookup/barcode/${encodeURIComponent(code)}`, { headers });
         const data = await res.json();
         if (!mounted) return;
-        if (!res.ok || !data.found) { setError(data.error || 'Product not found'); setLoading(false); return; }
+        if (!res.ok || !data.found) {
+          // Modo manual: producto no encontrado, permitir ingresar costos manualmente
+          setProduct({
+            manual: true,
+            sku: code,
+            product_name: null,
+            category: 'Everything Else',
+            avg_price: 0,
+            referral_fee: null,
+            wfs_fee: 0,
+            wfs_structure: [],
+            units_sold: null,
+            stock_available: null,
+            stock_onhand: null,
+          });
+          setBuyBox('');
+          setCogs('');
+          setWfsFee('');
+          setRefFeePct('15');
+          setLoading(false);
+          return;
+        }
         setProduct(data);
         setBuyBox(data.avg_price > 0 ? String(data.avg_price) : '');
         setCogs(data.cogs != null ? String(data.cogs) : '');
@@ -125,8 +146,12 @@ export default function Product() {
             </svg>
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-white font-black text-base leading-snug line-clamp-2">{product.product_name || product.sku}</p>
-            <p className="text-[#64B5F6] text-xs font-mono mt-0.5">SKU: {product.sku}</p>
+            <p className="text-white font-black text-base leading-snug line-clamp-2">
+              {product.manual ? 'Manual Entry' : (product.product_name || product.sku)}
+            </p>
+            <p className="text-[#64B5F6] text-xs font-mono mt-0.5">
+              {product.manual ? `Code: ${product.sku}` : `SKU: ${product.sku}`}
+            </p>
           </div>
           <button onClick={() => navigate('/settings')}
             className="text-white/50 p-1.5 rounded-full hover:bg-white/10 transition-colors flex-shrink-0">
@@ -139,6 +164,7 @@ export default function Product() {
 
         {/* Identifiers */}
         <div className="flex flex-wrap gap-2">
+          {product.manual && <span className="bg-[#FFC220]/20 rounded-full px-2.5 py-1 text-[10px] font-bold text-[#FFC220]">⚠ Not in catalog — enter costs manually</span>}
           {product.upc  && <span className="bg-white/10 rounded-full px-2.5 py-1 text-[10px] font-mono text-white/70">UPC {product.upc}</span>}
           {product.gtin && <span className="bg-white/10 rounded-full px-2.5 py-1 text-[10px] font-mono text-white/70">GTIN {product.gtin}</span>}
           {product.wpid && <span className="bg-white/10 rounded-full px-2.5 py-1 text-[10px] font-mono text-[#FFC220]">WPID {product.wpid}</span>}
@@ -146,6 +172,26 @@ export default function Product() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+
+        {/* Stock & Sales */}
+        {!product.manual && (product.units_sold != null || product.stock_available != null) && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#E0E0E0] text-center">
+              <p className="text-[10px] font-bold text-[#22c55e] uppercase tracking-wider mb-1">Units Sold</p>
+              <p className="text-2xl font-black text-[#0A2540]">{product.units_sold ?? '—'}</p>
+              <p className="text-[9px] text-[#B0B0B0] mt-0.5">All time</p>
+            </div>
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#E0E0E0] text-center">
+              <p className="text-[10px] font-bold text-[#0071CE] uppercase tracking-wider mb-1">In Stock</p>
+              <p className={`text-2xl font-black ${(product.stock_available ?? 0) > 0 ? 'text-[#0A2540]' : 'text-red-400'}`}>
+                {product.stock_available != null ? product.stock_available : '—'}
+              </p>
+              <p className="text-[9px] text-[#B0B0B0] mt-0.5">
+                {product.stock_onhand != null ? `${product.stock_onhand} on hand` : 'available to sell'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Inputs */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#E0E0E0]">
@@ -226,7 +272,7 @@ export default function Product() {
             <button onClick={() => { setTempRefFee(refFeePct); setShowRefFeeModal(true); }}
               className="text-left bg-[#FFF7ED] rounded-xl p-3 hover:bg-[#FFE4CC] transition-colors">
               <p className="text-[10px] font-bold text-[#FB923C] uppercase tracking-wider">Referral Fee</p>
-              <p className="text-lg font-black text-[#0A2540] mt-0.5">{fmt((product.avg_price * parseFloat(refFeePct || 15)) / 100)}</p>
+              <p className="text-lg font-black text-[#0A2540] mt-0.5">{fmt(((parseFloat(buyBox) || 0) * parseFloat(refFeePct || 15)) / 100)}</p>
               <p className="text-[10px] text-[#FB923C] font-mono">({refFeePct}%) ← tap</p>
             </button>
             <button onClick={() => setShowWfsModal(true)}
@@ -332,7 +378,7 @@ export default function Product() {
             </div>
 
             <p className="text-[10px] text-[#B0B0B0] text-center mb-6">
-              Calculated fee: {fmt((product.avg_price * parseFloat(tempRefFee || 15)) / 100)}
+              Calculated fee: {fmt(((parseFloat(buyBox) || 0) * parseFloat(tempRefFee || 15)) / 100)}
             </p>
 
             <div className="flex gap-3">
