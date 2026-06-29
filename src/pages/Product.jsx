@@ -27,7 +27,7 @@ export default function Product() {
   const [buyBox, setBuyBox]   = useState('');
   const [cogs, setCogs]       = useState('');
   const [wfsFee, setWfsFee]   = useState('');
-  const [refFee, setRefFee]   = useState('');
+  const [refFeePct, setRefFeePct] = useState('15');
 
   // Modals
   const [showBuyBoxModal, setShowBuyBoxModal] = useState(false);
@@ -52,7 +52,7 @@ export default function Product() {
         setBuyBox(data.avg_price > 0 ? String(data.avg_price) : '');
         setCogs(data.cogs != null ? String(data.cogs) : '');
         setWfsFee(data.wfs_fee != null ? String(data.wfs_fee) : '');
-        setRefFee(data.referral_fee != null ? String(data.referral_fee) : '');
+        setRefFeePct('15'); // default 15%
         setTempBuyBox(data.avg_price > 0 ? String(data.avg_price) : '');
         setTempCogs(data.cogs != null ? String(data.cogs) : '');
       } catch (e) {
@@ -69,7 +69,8 @@ export default function Product() {
     if (!product) return null;
     const price   = parseFloat(buyBox) || 0;
     const cogVal  = parseFloat(cogs) || 0;
-    const refFeeVal = parseFloat(refFee) || 0;
+    const refPct  = parseFloat(refFeePct) || 15;
+    const refFeeVal = (price * refPct / 100);
     const wfsVal  = parseFloat(wfsFee) || 0;
     const tax     = cogVal * (settings.taxPct / 100);
     const transfer = parseFloat(settings.transferFee) || 0;
@@ -82,12 +83,12 @@ export default function Product() {
     const totalInvested = cogVal + tax + transfer + packing + shipping + custom;
     const roi       = totalInvested > 0 ? (profit / totalInvested) * 100 : null;
     return {
-      price, refFee: refFeeVal, wfsFee: wfsVal, cogVal, tax, transfer, packing, shipping, custom, totalCost, profit, margin, roi,
+      price, refFee: refFeeVal, refFeePct: refPct, wfsFee: wfsVal, cogVal, tax, transfer, packing, shipping, custom, totalCost, profit, margin, roi,
       profitOK: profit >= settings.minProfit,
       roiOK: roi != null && roi >= settings.minROI,
       marginOK: margin != null && margin >= settings.minMargin,
     };
-  }, [product, buyBox, cogs, wfsFee, refFee, settings]);
+  }, [product, buyBox, cogs, wfsFee, refFeePct, settings]);
 
   const r = calc();
 
@@ -192,7 +193,7 @@ export default function Product() {
             <h3 className="text-xs font-black text-[#0A2540] uppercase tracking-widest mb-3">Cost Breakdown</h3>
             <div className="space-y-2.5">
               {[
-                { label: 'Referral Fee',  val: r.refFee,   sub: `${product.referral_fee_pct}%`, color: '#FB923C' },
+                { label: 'Referral Fee',  val: r.refFee,   sub: `${r.refFeePct}%`, color: '#FB923C' },
                 { label: 'WFS Fee',       val: r.wfsFee,   sub: product.wfs_fee_source,          color: '#8B5CF6' },
                 { label: 'COGS',          val: r.cogVal,   sub: null,                            color: '#0071CE' },
                 r.tax      > 0 ? { label: `Tax on COGS (${settings.taxPct}%)`, val: r.tax,      color: '#14B8A6' } : null,
@@ -222,11 +223,11 @@ export default function Product() {
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#E0E0E0]">
           <h3 className="text-xs font-black text-[#0A2540] uppercase tracking-widest mb-3">Walmart Fees</h3>
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => { setTempRefFee(refFee); setShowRefFeeModal(true); }}
+            <button onClick={() => { setTempRefFee(refFeePct); setShowRefFeeModal(true); }}
               className="text-left bg-[#FFF7ED] rounded-xl p-3 hover:bg-[#FFE4CC] transition-colors">
               <p className="text-[10px] font-bold text-[#FB923C] uppercase tracking-wider">Referral Fee</p>
-              <p className="text-lg font-black text-[#0A2540] mt-0.5">{fmt(parseFloat(refFee) || 0)}</p>
-              <p className="text-[10px] text-[#FB923C] font-mono">← tap to change</p>
+              <p className="text-lg font-black text-[#0A2540] mt-0.5">{fmt((product.avg_price * parseFloat(refFeePct || 15)) / 100)}</p>
+              <p className="text-[10px] text-[#FB923C] font-mono">({refFeePct}%) ← tap</p>
             </button>
             <button onClick={() => setShowWfsModal(true)}
               className="text-left bg-[#F3F0FF] rounded-xl p-3 hover:bg-[#E8DEFD] transition-colors">
@@ -312,48 +313,37 @@ export default function Product() {
         </div>
       )}
 
-      {/* Modal: Referral Fee by Category */}
+      {/* Modal: Referral Fee Percentage */}
       {showRefFeeModal && product && (
         <div className="fixed inset-0 bg-black/50 flex items-end z-50">
-          <div className="w-full bg-white rounded-t-3xl p-6 pb-10 max-h-[80vh] overflow-y-auto">
-            <h2 className="text-lg font-black text-[#0A2540] mb-2">Referral Fee Options</h2>
+          <div className="w-full bg-white rounded-t-3xl p-6 pb-10">
+            <h2 className="text-lg font-black text-[#0A2540] mb-2">Referral Fee %</h2>
             <p className="text-[10px] text-[#B0B0B0] mb-4">Category: {product.category} | Price: {fmt(product.avg_price)}</p>
 
-            {product.referral_fee_options && product.referral_fee_options.length > 0 ? (
-              <div className="space-y-2 mb-4">
-                {product.referral_fee_options.map((opt, i) => (
-                  <button key={i} onClick={() => { setRefFee(opt.calculated_fee); setShowRefFeeModal(false); }}
-                    className="w-full text-left p-3 rounded-xl border-2 border-[#E0E0E0] bg-[#F9F9FB] text-[#0A2540] hover:bg-[#0071CE] hover:border-[#0071CE] hover:text-white transition-colors active:bg-[#005EA8]">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-sm">{opt.description || `${opt.price_min ?? '0'} - ${opt.price_max ?? '∞'}`}</p>
-                        <p className="text-xs opacity-70 mt-0.5">{opt.fee_pct}% of price</p>
-                      </div>
-                      <p className="font-black text-sm">{fmt(parseFloat(opt.calculated_fee))}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[#B0B0B0] text-center py-4">No fee options available for this category</p>
-            )}
+            <div className="relative mb-6">
+              <input type="number" step="0.1" min="0" value={tempRefFee}
+                onChange={e => setTempRefFee(e.target.value)}
+                onFocus={e => { setTempRefFee(''); e.target.select(); }}
+                autoFocus
+                className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl text-lg font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
+                placeholder="15"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold text-lg">%</span>
+            </div>
 
-            <div className="border-t border-[#E0E0E0] pt-4">
-              <p className="text-xs font-bold text-[#B0B0B0] uppercase mb-2">Or enter manually:</p>
-              <div className="flex gap-3">
-                <div className="relative flex-1">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0071CE] font-bold">$</span>
-                  <input type="number" step="0.01" min="0" value={tempRefFee}
-                    onChange={e => setTempRefFee(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2.5 border-2 border-[#E0E0E0] rounded-xl text-sm font-bold text-[#0A2540] focus:border-[#0071CE] focus:outline-none"
-                    placeholder="0.00"
-                  />
-                </div>
-                <button onClick={() => { if (tempRefFee) { setRefFee(tempRefFee); setShowRefFeeModal(false); } }}
-                  className="px-5 py-2.5 rounded-xl bg-[#0071CE] text-white font-bold text-sm">
-                  OK
-                </button>
-              </div>
+            <p className="text-[10px] text-[#B0B0B0] text-center mb-6">
+              Calculated fee: {fmt((product.avg_price * parseFloat(tempRefFee || 15)) / 100)}
+            </p>
+
+            <div className="flex gap-3">
+              <button onClick={() => setShowRefFeeModal(false)}
+                className="flex-1 py-3 rounded-xl border-2 border-[#E0E0E0] text-[#0A2540] font-bold">
+                Cancel
+              </button>
+              <button onClick={() => { setRefFeePct(tempRefFee || '15'); setShowRefFeeModal(false); }}
+                className="flex-1 py-3 rounded-xl bg-[#0071CE] text-white font-bold">
+                Save
+              </button>
             </div>
           </div>
         </div>
